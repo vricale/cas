@@ -14,7 +14,6 @@ import org.apereo.cas.support.oauth.web.response.accesstoken.OAuth20TokenGenerat
 import org.apereo.cas.support.oauth.web.response.accesstoken.ext.AccessTokenRequestDataHolder;
 import org.apereo.cas.support.oauth.web.response.accesstoken.response.OAuth20AccessTokenResponseResult;
 import org.apereo.cas.ticket.OAuth20UnauthorizedScopeRequestException;
-import org.apereo.cas.ticket.accesstoken.OAuth20AccessToken;
 import org.apereo.cas.util.LoggingUtils;
 
 import com.google.common.base.Supplier;
@@ -169,11 +168,12 @@ public class OAuth20AccessTokenEndpointController extends BaseOAuth20Controller 
         LOGGER.debug("Generating access token response for [{}]", result);
         val deviceRefreshInterval = Beans.newDuration(getOAuthConfigurationContext().getCasProperties()
             .getAuthn().getOauth().getDeviceToken().getRefreshInterval()).getSeconds();
+        val atPolicy = getOAuthConfigurationContext().getAccessTokenExpirationPolicy();
         val dtPolicy = getOAuthConfigurationContext().getDeviceTokenExpirationPolicy();
         val tokenResult = OAuth20AccessTokenResponseResult.builder()
             .registeredService(requestHolder.getRegisteredService())
             .service(requestHolder.getService())
-            .accessTokenTimeout(result.getAccessToken().map(OAuth20AccessToken::getExpiresIn).orElse(0L))
+            .accessTokenTimeout(atPolicy.buildTicketExpirationPolicy().getTimeToLive())
             .deviceRefreshInterval(deviceRefreshInterval)
             .deviceTokenTimeout(dtPolicy.buildTicketExpirationPolicy().getTimeToLive())
             .responseType(result.getResponseType().orElse(OAuth20ResponseTypes.NONE))

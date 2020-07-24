@@ -39,11 +39,12 @@ public class OidcImplicitIdTokenAndTokenAuthorizationResponseBuilder extends OAu
 
     public OidcImplicitIdTokenAndTokenAuthorizationResponseBuilder(final IdTokenGeneratorService idTokenGenerator,
                                                                    final OAuth20TokenGenerator accessTokenGenerator,
+                                                                   final ExpirationPolicyBuilder<OAuth20AccessToken> accessTokenExpirationPolicy,
                                                                    final ExpirationPolicyBuilder idTokenExpirationPolicy,
                                                                    final ServicesManager servicesManager,
                                                                    final JwtBuilder accessTokenJwtBuilder,
                                                                    final CasConfigurationProperties casProperties) {
-        super(accessTokenGenerator, servicesManager, accessTokenJwtBuilder, casProperties);
+        super(accessTokenGenerator, accessTokenExpirationPolicy, servicesManager, accessTokenJwtBuilder, casProperties);
         this.idTokenGenerator = idTokenGenerator;
         this.idTokenExpirationPolicy = idTokenExpirationPolicy;
     }

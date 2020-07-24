@@ -38,7 +38,6 @@ import org.apereo.cas.config.CasThrottlingConfiguration;
 import org.apereo.cas.config.CasThymeleafConfiguration;
 import org.apereo.cas.config.support.CasWebApplicationServiceFactoryConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
-import org.apereo.cas.configuration.support.Beans;
 import org.apereo.cas.logout.config.CasCoreLogoutConfiguration;
 import org.apereo.cas.mock.MockServiceTicket;
 import org.apereo.cas.mock.MockTicketGrantingTicket;
@@ -645,25 +644,6 @@ public abstract class AbstractOAuth20Tests {
         return Pair.of(accessToken, newRefreshToken);
     }
 
-    /**
-     * Generate access token response and get model and view.
-     *
-     * @param registeredService the registered service
-     * @return the model and view
-     */
-    protected ModelAndView generateAccessTokenResponseAndGetModelAndView(final OAuthRegisteredService registeredService) {
-        return generateAccessTokenResponseAndGetModelAndView(registeredService,
-            RegisteredServiceTestUtils.getAuthentication("casuser"), OAuth20GrantTypes.AUTHORIZATION_CODE);
-    }
-
-    /**
-     * Generate access token response and get model and view.
-     *
-     * @param registeredService the registered service
-     * @param authentication    the authentication
-     * @param grantType         the grant type
-     * @return the model and view
-     */
     protected ModelAndView generateAccessTokenResponseAndGetModelAndView(
         final OAuthRegisteredService registeredService, final Authentication authentication,
         final OAuth20GrantTypes grantType) {
@@ -693,13 +673,8 @@ public abstract class AbstractOAuth20Tests {
         return accessTokenResponseGenerator.generate(mockRequest, mockResponse, result);
     }
 
-    /**
-     * Gets default access token expiration.
-     *
-     * @return the default access token expiration
-     */
-    protected long getDefaultAccessTokenExpiration() {
-        val seconds = casProperties.getAuthn().getOauth().getAccessToken().getMaxTimeToLiveInSeconds();
-        return Beans.newDuration(seconds).getSeconds();
+    protected ModelAndView generateAccessTokenResponseAndGetModelAndView(final OAuthRegisteredService registeredService) {
+        return generateAccessTokenResponseAndGetModelAndView(registeredService,
+            RegisteredServiceTestUtils.getAuthentication("casuser"), OAuth20GrantTypes.AUTHORIZATION_CODE);
     }
 }

@@ -136,6 +136,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Scope;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
+import org.springframework.core.io.ResourceLoader;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -155,6 +156,9 @@ import java.util.Set;
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @Slf4j
 public class CasOAuth20Configuration {
+    @Autowired
+    private ResourceLoader resourceLoader;
+
     @Autowired
     @Qualifier("defaultPrincipalResolver")
     private ObjectProvider<PrincipalResolver> defaultPrincipalResolver;
@@ -678,7 +682,7 @@ public class CasOAuth20Configuration {
     @RefreshScope
     public OAuth20AuthorizationResponseBuilder oauthResourceOwnerCredentialsResponseBuilder() {
         return new OAuth20ResourceOwnerCredentialsResponseBuilder(accessTokenResponseGenerator(), oauthTokenGenerator(),
-            casProperties);
+            accessTokenExpirationPolicy(), casProperties);
     }
 
     @ConditionalOnMissingBean(name = "oauthClientCredentialsResponseBuilder")
@@ -686,14 +690,14 @@ public class CasOAuth20Configuration {
     @RefreshScope
     public OAuth20AuthorizationResponseBuilder oauthClientCredentialsResponseBuilder() {
         return new OAuth20ClientCredentialsResponseBuilder(accessTokenResponseGenerator(),
-            oauthTokenGenerator(), casProperties);
+            oauthTokenGenerator(), accessTokenExpirationPolicy(), casProperties);
     }
 
     @ConditionalOnMissingBean(name = "oauthTokenResponseBuilder")
     @Bean
     @RefreshScope
     public OAuth20AuthorizationResponseBuilder oauthTokenResponseBuilder() {
-        return new OAuth20TokenAuthorizationResponseBuilder(oauthTokenGenerator(),
+        return new OAuth20TokenAuthorizationResponseBuilder(oauthTokenGenerator(), accessTokenExpirationPolicy(),
             servicesManager.getObject(), accessTokenJwtBuilder(), casProperties);
     }
 
@@ -853,7 +857,6 @@ public class CasOAuth20Configuration {
     @Scope(value = ConfigurableBeanFactory.SCOPE_PROTOTYPE)
     public OAuth20ConfigurationContext oauth20ConfigurationContext() {
         return OAuth20ConfigurationContext.builder()
-            .applicationContext(applicationContext)
             .registeredServiceCipherExecutor(oauthRegisteredServiceCipherExecutor())
             .sessionStore(oauthDistributedSessionStore())
             .servicesManager(servicesManager.getObject())
@@ -865,6 +868,7 @@ public class CasOAuth20Configuration {
             .webApplicationServiceServiceFactory(webApplicationServiceFactory.getObject())
             .casProperties(casProperties)
             .ticketGrantingTicketCookieGenerator(ticketGrantingTicketCookieGenerator.getObject())
+            .resourceLoader(resourceLoader)
             .oauthConfig(oauthSecConfig())
             .registeredServiceAccessStrategyEnforcer(registeredServiceAccessStrategyEnforcer.getObject())
             .centralAuthenticationService(centralAuthenticationService.getObject())
@@ -873,6 +877,7 @@ public class CasOAuth20Configuration {
             .accessTokenGenerator(oauthTokenGenerator())
             .accessTokenJwtBuilder(accessTokenJwtBuilder())
             .accessTokenResponseGenerator(accessTokenResponseGenerator())
+            .accessTokenExpirationPolicy(accessTokenExpirationPolicy())
             .deviceTokenExpirationPolicy(deviceTokenExpirationPolicy())
             .accessTokenGrantRequestValidators(oauthTokenRequestValidators())
             .userProfileDataCreator(oAuth2UserProfileDataCreator())

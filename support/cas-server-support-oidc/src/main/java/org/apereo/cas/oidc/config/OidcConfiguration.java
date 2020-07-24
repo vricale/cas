@@ -158,6 +158,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.DependsOn;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.web.servlet.View;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -218,6 +219,10 @@ public class OidcConfiguration implements WebMvcConfigurer {
     private ObjectProvider<ServiceFactory<WebApplicationService>> webApplicationServiceFactory;
 
     @Autowired
+    @Qualifier("accessTokenExpirationPolicy")
+    private ObjectProvider<ExpirationPolicyBuilder> accessTokenExpirationPolicy;
+
+    @Autowired
     @Qualifier("deviceTokenExpirationPolicy")
     private ObjectProvider<ExpirationPolicyBuilder> deviceTokenExpirationPolicy;
 
@@ -264,16 +269,15 @@ public class OidcConfiguration implements WebMvcConfigurer {
     private ObjectProvider<CasProtocolViewFactory> casProtocolViewFactory;
 
     @Autowired
+    private ResourceLoader resourceLoader;
+
+    @Autowired
     @Qualifier("singleLogoutServiceLogoutUrlBuilder")
     private ObjectProvider<SingleLogoutServiceLogoutUrlBuilder> singleLogoutServiceLogoutUrlBuilder;
 
     @Autowired
     @Qualifier("oauthSecConfig")
     private ObjectProvider<Config> oauthSecConfig;
-
-    @Autowired
-    @Qualifier("accessTokenExpirationPolicy")
-    private ObjectProvider<ExpirationPolicyBuilder> accessTokenExpirationPolicy;
 
     @Autowired
     @Qualifier("ticketGrantingTicketCookieGenerator")
@@ -290,7 +294,7 @@ public class OidcConfiguration implements WebMvcConfigurer {
     @Autowired
     @Qualifier("defaultDeviceUserCodeFactory")
     private ObjectProvider<OAuth20DeviceUserCodeFactory> defaultDeviceUserCodeFactory;
-
+    
     @Autowired
     @Qualifier("servicesManager")
     private ObjectProvider<ServicesManager> servicesManager;
@@ -351,7 +355,7 @@ public class OidcConfiguration implements WebMvcConfigurer {
     public ProtocolEndpointConfigurer oidcProtocolEndpointConfigurer() {
         return () -> List.of(StringUtils.prependIfMissing(OidcConstants.BASE_OIDC_URL, "/"));
     }
-
+    
     @Bean
     public ConsentApprovalViewResolver consentApprovalViewResolver() {
         return new OidcConsentApprovalViewResolver(casProperties);
@@ -729,12 +733,13 @@ public class OidcConfiguration implements WebMvcConfigurer {
     @ConditionalOnMissingBean(name = "oidcImplicitIdTokenCallbackUrlBuilder")
     public OAuth20AuthorizationResponseBuilder oidcImplicitIdTokenCallbackUrlBuilder() {
         return new OidcImplicitIdTokenAuthorizationResponseBuilder(
-            oidcIdTokenGenerator(),
-            oidcTokenGenerator(),
-            grantingTicketExpirationPolicy.getObject(),
-            servicesManager.getObject(),
-            oidcAccessTokenJwtBuilder(),
-            casProperties);
+                oidcIdTokenGenerator(),
+                oidcTokenGenerator(),
+                accessTokenExpirationPolicy.getObject(),
+                grantingTicketExpirationPolicy.getObject(),
+                servicesManager.getObject(),
+                oidcAccessTokenJwtBuilder(),
+                casProperties);
     }
 
     @Bean
@@ -742,12 +747,13 @@ public class OidcConfiguration implements WebMvcConfigurer {
     @ConditionalOnMissingBean(name = "oidcImplicitIdTokenAndTokenCallbackUrlBuilder")
     public OAuth20AuthorizationResponseBuilder oidcImplicitIdTokenAndTokenCallbackUrlBuilder() {
         return new OidcImplicitIdTokenAndTokenAuthorizationResponseBuilder(
-            oidcIdTokenGenerator(),
-            oidcTokenGenerator(),
-            grantingTicketExpirationPolicy.getObject(),
-            servicesManager.getObject(),
-            oidcAccessTokenJwtBuilder(),
-            casProperties);
+                oidcIdTokenGenerator(),
+                oidcTokenGenerator(),
+                accessTokenExpirationPolicy.getObject(),
+                grantingTicketExpirationPolicy.getObject(),
+                servicesManager.getObject(),
+                oidcAccessTokenJwtBuilder(),
+                casProperties);
     }
 
     @Bean
@@ -755,9 +761,10 @@ public class OidcConfiguration implements WebMvcConfigurer {
     @ConditionalOnMissingBean(name = "oidcResourceOwnerCredentialsResponseBuilder")
     public OAuth20AuthorizationResponseBuilder oidcResourceOwnerCredentialsResponseBuilder() {
         return new OAuth20ResourceOwnerCredentialsResponseBuilder(
-            oidcAccessTokenResponseGenerator(),
-            oidcTokenGenerator(),
-            casProperties);
+                oidcAccessTokenResponseGenerator(), 
+                oidcTokenGenerator(),
+                accessTokenExpirationPolicy.getObject(),
+                casProperties);
     }
 
     @Bean
@@ -765,9 +772,10 @@ public class OidcConfiguration implements WebMvcConfigurer {
     @ConditionalOnMissingBean(name = "oidcClientCredentialsResponseBuilder")
     public OAuth20AuthorizationResponseBuilder oidcClientCredentialsResponseBuilder() {
         return new OAuth20ClientCredentialsResponseBuilder(
-            oidcAccessTokenResponseGenerator(),
-            oidcTokenGenerator(),
-            casProperties);
+                oidcAccessTokenResponseGenerator(),
+                oidcTokenGenerator(),
+                accessTokenExpirationPolicy.getObject(),
+                casProperties);
     }
 
     @Bean
@@ -775,10 +783,11 @@ public class OidcConfiguration implements WebMvcConfigurer {
     @ConditionalOnMissingBean(name = "oidcTokenResponseBuilder")
     public OAuth20AuthorizationResponseBuilder oidcTokenResponseBuilder() {
         return new OAuth20TokenAuthorizationResponseBuilder(
-            oidcTokenGenerator(),
-            servicesManager.getObject(),
-            oidcAccessTokenJwtBuilder(),
-            casProperties);
+                oidcTokenGenerator(), 
+                accessTokenExpirationPolicy.getObject(),
+                servicesManager.getObject(), 
+                oidcAccessTokenJwtBuilder(), 
+                casProperties);
     }
 
     @Bean
@@ -786,20 +795,20 @@ public class OidcConfiguration implements WebMvcConfigurer {
     @ConditionalOnMissingBean(name = "oidcAuthorizationCodeResponseBuilder")
     public OAuth20AuthorizationResponseBuilder oidcAuthorizationCodeResponseBuilder() {
         return new OAuth20AuthorizationCodeAuthorizationResponseBuilder(
-            ticketRegistry.getObject(),
-            defaultOAuthCodeFactory.getObject(),
-            servicesManager.getObject());
+                ticketRegistry.getObject(),
+                defaultOAuthCodeFactory.getObject(), 
+                servicesManager.getObject());
     }
-
+    
     @Bean
     @RefreshScope
     @ConditionalOnMissingBean(name = "oidcAuthorizationResponseBuilders")
     public Set<OAuth20AuthorizationResponseBuilder> oidcAuthorizationResponseBuilders() {
         val builders = applicationContext.getBeansOfType(OAuth20AuthorizationResponseBuilder.class, false, true);
         return builders.entrySet().stream().
-            filter(e -> !e.getKey().startsWith("oauth")).
-            map(Map.Entry::getValue).
-            collect(Collectors.toSet());
+                filter(e -> !e.getKey().startsWith("oauth")).
+                map(Map.Entry::getValue).
+                collect(Collectors.toSet());
     }
 
     @Bean
@@ -918,10 +927,10 @@ public class OidcConfiguration implements WebMvcConfigurer {
     public JwtBuilder oidcAccessTokenJwtBuilder() {
         val oidc = casProperties.getAuthn().getOidc();
         return new OAuth20JwtBuilder(
-            oidc.getIssuer(),
-            oauthAccessTokenJwtCipherExecutor.getObject(),
-            servicesManager.getObject(),
-            oauthRegisteredServiceJwtAccessTokenCipherExecutor());
+                oidc.getIssuer(),
+                oauthAccessTokenJwtCipherExecutor.getObject(),
+                servicesManager.getObject(),
+                oauthRegisteredServiceJwtAccessTokenCipherExecutor());
     }
 
     @Bean
@@ -929,10 +938,10 @@ public class OidcConfiguration implements WebMvcConfigurer {
     @ConditionalOnMissingBean(name = "oidcAccessTokenFactory")
     public OAuth20AccessTokenFactory oidcAccessTokenFactory() {
         return new OAuth20DefaultAccessTokenFactory(
-            accessTokenIdGenerator.getObject(),
-            accessTokenExpirationPolicy.getObject(),
-            oidcAccessTokenJwtBuilder(),
-            servicesManager.getObject());
+                accessTokenIdGenerator.getObject(),
+                accessTokenExpirationPolicy.getObject(),
+                oidcAccessTokenJwtBuilder(),
+                servicesManager.getObject());
     }
 
     @Bean
@@ -940,17 +949,16 @@ public class OidcConfiguration implements WebMvcConfigurer {
     @ConditionalOnMissingBean(name = "oidcTokenGenerator")
     public OAuth20TokenGenerator oidcTokenGenerator() {
         return new OAuth20DefaultTokenGenerator(
-            oidcAccessTokenFactory(),
-            defaultDeviceTokenFactory.getObject(),
-            defaultDeviceUserCodeFactory.getObject(),
-            defaultRefreshTokenFactory.getObject(),
-            centralAuthenticationService.getObject(),
-            casProperties);
+                oidcAccessTokenFactory(),
+                defaultDeviceTokenFactory.getObject(),
+                defaultDeviceUserCodeFactory.getObject(),
+                defaultRefreshTokenFactory.getObject(),
+                centralAuthenticationService.getObject(),
+                casProperties);
     }
-
+    
     private OAuth20ConfigurationContext buildConfigurationContext() {
         return OAuth20ConfigurationContext.builder()
-            .applicationContext(applicationContext)
             .registeredServiceCipherExecutor(oauthRegisteredServiceCipherExecutor.getObject())
             .sessionStore(oauthDistributedSessionStore.getObject())
             .servicesManager(servicesManager.getObject())
@@ -965,6 +973,7 @@ public class OidcConfiguration implements WebMvcConfigurer {
             .webApplicationServiceServiceFactory(webApplicationServiceFactory.getObject())
             .casProperties(casProperties)
             .ticketGrantingTicketCookieGenerator(ticketGrantingTicketCookieGenerator.getObject())
+            .resourceLoader(resourceLoader)
             .oauthConfig(oauthSecConfig.getObject())
             .registeredServiceAccessStrategyEnforcer(registeredServiceAccessStrategyEnforcer.getObject())
             .centralAuthenticationService(centralAuthenticationService.getObject())
@@ -972,6 +981,7 @@ public class OidcConfiguration implements WebMvcConfigurer {
             .profileScopeToAttributesFilter(profileScopeToAttributesFilter())
             .accessTokenGenerator(oidcTokenGenerator())
             .accessTokenResponseGenerator(oidcAccessTokenResponseGenerator())
+            .accessTokenExpirationPolicy(accessTokenExpirationPolicy.getObject())
             .deviceTokenExpirationPolicy(deviceTokenExpirationPolicy.getObject())
             .accessTokenGrantRequestValidators(oauthTokenRequestValidators.getObject())
             .userProfileDataCreator(oidcUserProfileDataCreator())
